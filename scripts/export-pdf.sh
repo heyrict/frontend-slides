@@ -97,12 +97,10 @@ echo ""
 
 info "Checking dependencies..."
 
-if ! command -v npx &>/dev/null; then
-    err "Node.js is required but not installed."
+if ! command -v playwright &>/dev/null; then
+    err "Playwright is required but not installed."
     err ""
-    err "Install Node.js:"
-    err "  macOS:   brew install node"
-    err "  or visit https://nodejs.org and download the installer"
+    err "Install Playwright: bun install -g @playwright/cli"
     exit 1
 fi
 
@@ -356,18 +354,28 @@ cat > "$TEMP_DIR/package.json" << 'PKG'
 { "name": "slide-export", "private": true, "type": "module" }
 PKG
 
-# Install Playwright into the temp directory
-npm install playwright &>/dev/null || {
-    err "Failed to install Playwright."
-    err "Try running: npm install playwright"
-    rm -rf "$TEMP_DIR"
-    exit 1
-}
+# Install Playwright (preferrably the same as global one) into the temp directory
+pwversion=$(bun pm pkg get -g dependencies.playwright | jq -r .)
+if [ -n "$pwversion" ]; then
+    bun add "playwright@$pwversion" &>/dev/null || {
+        err "Failed to install Playwright."
+        err "Try running: npm install playwright"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    }
+else
+    bun add playwright &>/dev/null || {
+        err "Failed to install Playwright."
+        err "Try running: npm install playwright"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    }
+fi
 
 # Ensure Chromium browser binary is downloaded
-npx playwright install chromium 2>/dev/null || {
+playwright install chromium 2>/dev/null || {
     err "Failed to install Chromium browser for Playwright."
-    err "Try running manually: npx playwright install chromium"
+    err "Try running manually: playwright install chromium"
     rm -rf "$TEMP_DIR"
     exit 1
 }
